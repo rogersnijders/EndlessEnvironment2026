@@ -7,15 +7,27 @@ public class ParallaxBackground : MonoBehaviour
     public ParallaxCamera parallaxCamera;
     List<ParallaxLayer> parallaxLayers = new List<ParallaxLayer>();
 
-    void Start()
+    // CHANGED: subscribe-logica verplaatst van Start() naar OnEnable()/OnDisable() hieronder.
+    // Start() alleen unsubscribede nooit, waardoor het opnieuw enablen van dit object (of
+    // [ExecuteInEditMode]-recompiles) dezelfde Move()-callback meerdere keren kon registreren,
+    // wat Move() meerdere keren per camerabeweging liet afvuren.
+    void OnEnable()
     {
         if (parallaxCamera == null)
-            parallaxCamera = Camera.main.GetComponent<ParallaxCamera>();
+            parallaxCamera = Camera.main != null ? Camera.main.GetComponent<ParallaxCamera>() : null; // CHANGED: guard tegen ontbrekende main camera
 
         if (parallaxCamera != null)
             parallaxCamera.onCameraTranslate += Move;
 
         SetLayers();
+    }
+
+    // CHANGED: toegevoegd — unsubscribet van het camera-event zodra dit object disabled/destroyed wordt,
+    // voorkomt de memory/event leak die eerder in de review naar voren kwam.
+    void OnDisable()
+    {
+        if (parallaxCamera != null)
+            parallaxCamera.onCameraTranslate -= Move;
     }
 
     void SetLayers()

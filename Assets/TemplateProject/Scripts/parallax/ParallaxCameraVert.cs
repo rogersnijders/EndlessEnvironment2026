@@ -4,24 +4,27 @@ using UnityEngine;
 public class ParallaxCameraVert : MonoBehaviour
 {
     public delegate void ParallaxCameraDelegate(float deltaMovement);
-    public ParallaxCameraDelegate onCameraTranslate;
+
+    // CHANGED: "event" keyword toegevoegd, zodat alleen deze class het event kan invoken/overschrijven
+    // (voorkomt dat een ander script per ongeluk alle subscribers wist met '=' i.p.v. '+=').
+    public event ParallaxCameraDelegate onCameraTranslate;
 
     private float oldPosition;
 
-    void Start()
+    // CHANGED: initialisatie verplaatst van Start() naar OnEnable(), zelfde reden als ParallaxCamera.cs:
+    // Start() is niet gegarandeerd betrouwbaar met [ExecuteInEditMode].
+    void OnEnable()
     {
         oldPosition = transform.position.y;
     }
 
     void Update()
     {
-        if (transform.position.y != oldPosition)
+        // CHANGED: Mathf.Approximately i.p.v. een directe "!=" float-vergelijking.
+        if (!Mathf.Approximately(transform.position.y, oldPosition))
         {
-            if (onCameraTranslate != null)
-            {
-                float delta = oldPosition - transform.position.y;
-                onCameraTranslate(delta);
-            }
+            float delta = oldPosition - transform.position.y;
+            onCameraTranslate?.Invoke(delta); // CHANGED: null-conditional invoke i.p.v. handmatige null-check
 
             oldPosition = transform.position.y;
         }

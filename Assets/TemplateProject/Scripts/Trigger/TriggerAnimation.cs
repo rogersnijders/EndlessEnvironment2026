@@ -10,18 +10,20 @@ public class TriggerAnimation : MonoBehaviour
     private Animator TriggerAnimator;
     private Animator TargetAnimator;
 
+    // CHANGED: gereviewd — had al correcte null-checks in Start() en OnTriggerEnter2D(),
+    // geen functionele wijzigingen nodig.
     void Start()
     {
         // Get the Animator component from the first object
         if (TriggerToAnimate != null)
         {
-           TriggerAnimator = TriggerToAnimate.GetComponent<Animator>();
+            TriggerAnimator = TriggerToAnimate.GetComponent<Animator>();
         }
 
         // Get the Animator component from the second object
         if (TargetToAnimate != null)
         {
-            TargetAnimator =TargetToAnimate.GetComponent<Animator>();
+            TargetAnimator = TargetToAnimate.GetComponent<Animator>();
         }
     }
 
@@ -34,7 +36,7 @@ public class TriggerAnimation : MonoBehaviour
             // Trigger the animation on the first object
             if (TriggerAnimator != null)
             {
-               TriggerAnimator.SetTrigger("TriggerAnimation");
+                TriggerAnimator.SetTrigger("TriggerAnimation");
             }
 
             // Trigger the animation on the second object

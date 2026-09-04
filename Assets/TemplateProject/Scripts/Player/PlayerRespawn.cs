@@ -1,24 +1,26 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization; // CHANGED: nodig voor FormerlySerializedAs, gebruikt hieronder om een public field veilig te hernoemen
 
 public class PlayerRespawn : MonoBehaviour
 {
     public Transform respawnPoint; // The point where the player will respawn.
 
-    // Reference to the Animator component on the third GameObject
-    public Animator thirdGameObjectAnimator;
+    // CHANGED: hernoemd van "thirdGameObjectAnimator" naar "respawnEffectAnimator" voor een zelfverklarende naam.
+    // FormerlySerializedAs zorgt dat een reeds ingestelde waarde in de Inspector niet verloren gaat door de rename.
+    [FormerlySerializedAs("thirdGameObjectAnimator")]
+    public Animator respawnEffectAnimator;
 
     private void Start()
     {
         if (respawnPoint == null)
         {
-            UnityEngine.Debug.LogError("Respawn point not set for the player!");
+            Debug.LogError("Respawn point not set for the player!", this); // CHANGED: 'this' toegevoegd als context zodat de log naar het juiste GameObject verwijst
         }
 
-        // Ensure that the thirdGameObjectAnimator is assigned
-        if (thirdGameObjectAnimator == null)
+        if (respawnEffectAnimator == null)
         {
-            UnityEngine.Debug.LogError("Third GameObject Animator not assigned!");
+            Debug.LogError("Respawn effect Animator not assigned!", this); // CHANGED: idem + veldnaam in bericht bijgewerkt
         }
     }
 
@@ -28,8 +30,11 @@ public class PlayerRespawn : MonoBehaviour
         // Ensure the final position is set to the respawn point.
         transform.position = respawnPoint.position;
 
-        // Trigger the animation on the third GameObject
-        thirdGameObjectAnimator.SetTrigger("PlayAnimationTrigger");
-
+        // CHANGED: guard tegen een ontbrekende animator toegevoegd, i.p.v. een NullReferenceException
+        // te riskeren (Start() logt alleen een error maar voorkomt niet dat Respawn() alsnog wordt aangeroepen).
+        if (respawnEffectAnimator != null)
+        {
+            respawnEffectAnimator.SetTrigger("PlayAnimationTrigger");
+        }
     }
 }

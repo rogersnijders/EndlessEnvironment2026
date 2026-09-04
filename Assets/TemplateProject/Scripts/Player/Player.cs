@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization; // CHANGED: nodig voor FormerlySerializedAs, gebruikt hieronder om een public field veilig te hernoemen
 
 public class Player : MonoBehaviour
 {
@@ -10,7 +11,11 @@ public class Player : MonoBehaviour
     [Header("Jump")]
     [SerializeField] private float jumpForce = 8.0f;
     [SerializeField] private float jumpTime = 0.1f;
-    public bool SchuinSpringen = true; // Toggle this in the Inspector
+
+    // CHANGED: hernoemd van "SchuinSpringen" naar "diagonalJump" voor consistente Engelse naamgeving.
+    // FormerlySerializedAs zorgt dat een reeds ingestelde waarde in de Inspector niet verloren gaat door de rename.
+    [FormerlySerializedAs("SchuinSpringen")]
+    public bool diagonalJump = true; // Toggle this in the Inspector
 
     [Header("Turn Check")]
     [SerializeField] private GameObject DirL;
@@ -35,23 +40,45 @@ public class Player : MonoBehaviour
     // Variables for pass-through platform
     private PlatformEffector2D currentPlatformEffector;
 
+    // CHANGED: toegevoegd voor de nieuwe pass-through check op basis van de Input System,
+    // gebruikt om het moment te detecteren waarop "omlaag" ingedrukt wordt (edge-detect, i.p.v. elke frame dat het ingedrukt blijft).
+    private bool wasDownPressed;
+
+    // CHANGED: herbruikbare buffer voor Physics2D.OverlapBoxNonAlloc, zodat FindPlatformEffector()
+    // niet langer bij elke aanroep een nieuwe array alloceert (was OverlapBoxAll).
+    private readonly Collider2D[] overlapBuffer = new Collider2D[8];
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         coll = GetComponent<Collider2D>();
+
+        // CHANGED: defensieve null-checks toegevoegd met duidelijke warnings i.p.v. later
+        // een onverklaarbare NullReferenceException te krijgen.
+        if (rb == null) Debug.LogWarning($"{name}: Rigidbody2D ontbreekt op Player.", this);
+        if (anim == null) Debug.LogWarning($"{name}: Animator ontbreekt op Player.", this);
+        if (coll == null) Debug.LogWarning($"{name}: Collider2D ontbreekt op Player.", this);
+        if (trailFX == null) Debug.LogWarning($"{name}: trailFX niet toegewezen op Player.", this);
+
         StartDirectionCheck();
     }
 
     private void Update()
     {
-        Move();
-        Jump();
+        // CHANGED: IsGrounded() werd tot 4x per frame aangeroepen (Move, Jump x2, DrawGroundCheck).
+        // De physics-query draait nu één keer per frame; het resultaat wordt doorgegeven aan wie het nodig heeft.
+        bool grounded = IsGrounded();
+
+        Move(grounded);
+        Jump(grounded);
         CheckPassThrough();
+        DrawGroundCheck(grounded);
     }
 
     #region Movement
-    private void Move()
+    // CHANGED: neemt nu "grounded" als parameter i.p.v. zelf opnieuw IsGrounded() aan te roepen.
+    private void Move(bool grounded)
     {
         moveInput = UserInput.instance.moveInput.x;
 
@@ -67,7 +94,7 @@ public class Player : MonoBehaviour
         }
 
         // Update horizontal velocity only if the character is grounded
-        if (IsGrounded())
+        if (grounded)
         {
             rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
         }
@@ -78,12 +105,15 @@ public class Player : MonoBehaviour
         }
 
         // Always check and update the dust effect
-        Dust();
+        Dust(grounded); // CHANGED: grounded doorgegeven i.p.v. opnieuw physics query
     }
 
-    private void Dust()
+    // CHANGED: neemt nu "grounded" als parameter i.p.v. zelf opnieuw IsGrounded() aan te roepen.
+    private void Dust(bool grounded)
     {
-        if (IsGrounded() && moveInput != 0)
+        if (trailFX == null) return; // CHANGED: guard tegen ontbrekende referentie
+
+        if (grounded && moveInput != 0)
         {
             if (!trailFX.isPlaying)
             {
@@ -99,14 +129,15 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void Jump()
+    // CHANGED: neemt nu "grounded" als parameter i.p.v. zelf opnieuw IsGrounded() aan te roepen.
+    private void Jump(bool grounded)
     {
         // Button was pressed this frame and character is grounded
-        if (UserInput.instance.controls.Jumping.Jump.WasPressedThisFrame() && IsGrounded())
+        if (UserInput.instance.controls.Jumping.Jump.WasPressedThisFrame() && grounded)
         {
             IsJumping = true;
             JumpTimeCounter = jumpTime;
-            if (SchuinSpringen)
+            if (diagonalJump) // CHANGED: hernoemde field
             {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce); // Maintain horizontal velocity
             }
@@ -116,7 +147,7 @@ public class Player : MonoBehaviour
             }
 
             anim.SetTrigger("jump");
-            trailFX.Stop();
+            if (trailFX != null) trailFX.Stop(); // CHANGED: guard tegen ontbrekende referentie
         }
 
         // Button is held
@@ -124,7 +155,7 @@ public class Player : MonoBehaviour
         {
             if (JumpTimeCounter > 0 && IsJumping)
             {
-                if (SchuinSpringen)
+                if (diagonalJump) // CHANGED: hernoemde field
                 {
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce); // Maintain horizontal velocity
                 }
@@ -154,28 +185,32 @@ public class Player : MonoBehaviour
         }
 
         // Check for landing
-        if (!IsJumping && CheckForLand())
+        if (!IsJumping && CheckForLand(grounded)) // CHANGED: grounded doorgegeven
         {
             anim.SetTrigger("land");
+
+            // CHANGED: eventuele vorige, nog lopende reset-coroutine stoppen voordat een nieuwe start,
+            // zodat snelle landingen niet meerdere coroutines tegelijk dezelfde trigger laten resetten.
+            if (resetTriggerCoroutine != null) StopCoroutine(resetTriggerCoroutine);
             resetTriggerCoroutine = StartCoroutine(Reset());
         }
-
-        // Draw ground check (assuming it's for debugging purposes)
-        DrawGroundCheck();
     }
     #endregion
 
     #region Ground/Landed Check
     private bool IsGrounded()
     {
+        if (coll == null) return false; // CHANGED: guard tegen ontbrekende collider
+
         groundHit = Physics2D.BoxCast(coll.bounds.center, coll.bounds.size, 0f, Vector2.down, extraHeight, whatIsGround);
 
         return groundHit.collider != null;
     }
 
-    private bool CheckForLand()
+    // CHANGED: neemt nu "grounded" als parameter i.p.v. zelf opnieuw IsGrounded() aan te roepen.
+    private bool CheckForLand(bool grounded)
     {
-        if (IsFalling && IsGrounded())
+        if (IsFalling && grounded)
         {
             IsFalling = false;
             return true;
@@ -217,16 +252,19 @@ public class Player : MonoBehaviour
     #endregion
 
     #region Pass-Through Platform
+    // CHANGED: legacy Input.GetKeyDown(KeyCode.S / DownArrow) vervangen door de al bestaande
+    // "Move"-action uit de nieuwe Input System (moveInput.y), zodat het hele project consistent
+    // de nieuwe Input System gebruikt i.p.v. legacy en nieuw door elkaar.
     private void CheckPassThrough()
     {
-        // WIJZIGING: Vervangen Input.GetKeyDown(KeyCode.S/DownArrow) met Input System package
-        // van: if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
-        // naar: UnityEngine.InputSystem.Keyboard.current gebruiken (direct keyboard access via Input System)
-        if (UnityEngine.InputSystem.Keyboard.current.sKey.wasPressedThisFrame ||
-            UnityEngine.InputSystem.Keyboard.current.downArrowKey.wasPressedThisFrame)
+        bool isDownPressed = UserInput.instance.moveInput.y < -0.5f;
+
+        if (isDownPressed && !wasDownPressed) // edge-detect, zelfde gedrag als het oude GetKeyDown
         {
             StartCoroutine(PassThrough());
         }
+
+        wasDownPressed = isDownPressed;
     }
 
     private IEnumerator PassThrough()
@@ -241,12 +279,14 @@ public class Player : MonoBehaviour
         }
     }
 
+    // CHANGED: gebruikt Physics2D.OverlapBoxNonAlloc met een herbruikbare buffer i.p.v.
+    // OverlapBoxAll, dat bij elke aanroep een nieuwe array alloceerde.
     private PlatformEffector2D FindPlatformEffector()
     {
-        Collider2D[] colliders = Physics2D.OverlapBoxAll(transform.position, coll.bounds.size, 0);
-        foreach (Collider2D collider in colliders)
+        int count = Physics2D.OverlapBoxNonAlloc(transform.position, coll.bounds.size, 0, overlapBuffer);
+        for (int i = 0; i < count; i++)
         {
-            PlatformEffector2D effector = collider.GetComponent<PlatformEffector2D>();
+            PlatformEffector2D effector = overlapBuffer[i].GetComponent<PlatformEffector2D>();
             if (effector != null)
             {
                 return effector;
@@ -257,9 +297,13 @@ public class Player : MonoBehaviour
     #endregion
 
     #region Debug Functions
-    private void DrawGroundCheck()
+    // CHANGED: neemt nu "grounded" als parameter i.p.v. zelf opnieuw IsGrounded() aan te roepen
+    // (dit was de 4e overbodige aanroep per frame).
+    private void DrawGroundCheck(bool grounded)
     {
-        Color rayColor = IsGrounded() ? Color.green : Color.red;
+        if (coll == null) return; // CHANGED: guard tegen ontbrekende collider
+
+        Color rayColor = grounded ? Color.green : Color.red;
 
         Debug.DrawRay(coll.bounds.center + new Vector3(coll.bounds.extents.x, 0), Vector2.down * (coll.bounds.extents.y + extraHeight), rayColor);
         Debug.DrawRay(coll.bounds.center - new Vector3(coll.bounds.extents.x, 0), Vector2.down * (coll.bounds.extents.y + extraHeight), rayColor);

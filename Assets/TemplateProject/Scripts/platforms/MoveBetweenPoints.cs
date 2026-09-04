@@ -11,6 +11,11 @@ public class MoveBetweenPoints : MonoBehaviour
     private bool movingToPointB = true;
     private float delayTimer = 0.0f;
 
+    // CHANGED: drempelwaarde één keer als kwadraat vastgelegd, zodat Update() geen sqrt hoeft
+    // te berekenen (was Vector3.Distance, die intern een sqrt doet).
+    private const float ArrivalThreshold = 0.1f;
+    private static readonly float ArrivalThresholdSqr = ArrivalThreshold * ArrivalThreshold;
+
     void Start()
     {
         targetPosition = pointB.position;
@@ -31,7 +36,8 @@ public class MoveBetweenPoints : MonoBehaviour
 
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
 
-        if (Vector3.Distance(transform.position, targetPosition) < 0.1f)
+        // CHANGED: sqrMagnitude-vergelijking i.p.v. Vector3.Distance(), voorkomt een sqrt() elke frame.
+        if ((transform.position - targetPosition).sqrMagnitude < ArrivalThresholdSqr)
         {
             if (movingToPointB)
             {

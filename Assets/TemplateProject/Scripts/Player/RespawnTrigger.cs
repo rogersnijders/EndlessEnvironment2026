@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class RespawnTrigger : MonoBehaviour
 {
+    // CHANGED: gereviewd — logica was al correct en overzichtelijk, geen functionele wijzigingen nodig.
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Player"))
