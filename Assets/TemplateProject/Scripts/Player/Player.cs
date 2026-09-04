@@ -219,7 +219,11 @@ public class Player : MonoBehaviour
     #region Pass-Through Platform
     private void CheckPassThrough()
     {
-        if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+        // WIJZIGING: Vervangen Input.GetKeyDown(KeyCode.S/DownArrow) met Input System package
+        // van: if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+        // naar: UnityEngine.InputSystem.Keyboard.current gebruiken (direct keyboard access via Input System)
+        if (UnityEngine.InputSystem.Keyboard.current.sKey.wasPressedThisFrame ||
+            UnityEngine.InputSystem.Keyboard.current.downArrowKey.wasPressedThisFrame)
         {
             StartCoroutine(PassThrough());
         }
