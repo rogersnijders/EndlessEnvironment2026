@@ -7431,7 +7431,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   respawnPoint: {fileID: 1218208862}
-  thirdGameObjectAnimator: {fileID: 1737471476}
+  respawnEffectAnimator: {fileID: 1737471476}
 --- !u!61 &1960871191
 BoxCollider2D:
   m_ObjectHideFlags: 0
