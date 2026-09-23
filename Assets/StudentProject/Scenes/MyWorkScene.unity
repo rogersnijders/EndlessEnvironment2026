@@ -7341,7 +7341,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1960871186}
   - component: {fileID: 1960871183}
-  - component: {fileID: 1960871190}
+  - component: {fileID: 1960871192}
   - component: {fileID: 1960871182}
   - component: {fileID: 1960871187}
   - component: {fileID: 1960871191}
@@ -7431,31 +7431,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   respawnPoint: {fileID: 1218208862}
-  thirdGameObjectAnimator: {fileID: 1737471476}
---- !u!114 &1960871190
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1960871181}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71cf32e1d9ff1487fa1091315cf29892, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveSpeed: 15
-  trailFX: {fileID: 394765142}
-  jumpForce: 10
-  jumpTime: 0.5
-  SchuinSpringen: 1
-  DirL: {fileID: 2080795334}
-  DirR: {fileID: 953966846}
-  extraHeight: 0.25
-  whatIsGround:
-    serializedVersion: 2
-    m_Bits: 64
-  IsFacingRight: 0
+  respawnEffectAnimator: {fileID: 1737471476}
 --- !u!61 &1960871191
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -7502,6 +7478,30 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &1960871192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1960871181}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e07f2e804a3b4dddb3d106473409251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Player
+  moveSpeed: 15
+  trailFX: {fileID: 394765142}
+  jumpForce: 10
+  jumpTime: 0.5
+  SchuinSpringen: 1
+  DirL: {fileID: 2080795334}
+  DirR: {fileID: 953966846}
+  extraHeight: 0.25
+  whatIsGround:
+    serializedVersion: 2
+    m_Bits: 64
+  IsFacingRight: 0
 --- !u!1 &1963817589
 GameObject:
   m_ObjectHideFlags: 0
